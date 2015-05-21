@@ -1,0 +1,14 @@
+#-----------------------------------------------------------
+# PlanAhead v14.7 (64-bit)
+# Build 321239 by xbuild on Fri Sep 27 19:29:51 MDT 2013
+# Start of session at: Sun May 17 13:07:44 2015
+# Process ID: 9436
+# Log file: C:/Users/btremaine/Dropbox/Engineering/FPGA_Design/Projects/TAEC_MAR3_WBONE_051615/TAEC/TAEC_ARMS/planAhead_run_2/planAhead.log
+# Journal file: C:/Users/btremaine/Dropbox/Engineering/FPGA_Design/Projects/TAEC_MAR3_WBONE_051615/TAEC/TAEC_ARMS/planAhead_run_2/planAhead.jou
+#-----------------------------------------------------------
+start_gui
+source C:/Users/btremaine/Dropbox/Engineering/FPGA_Design/Projects/TAEC_MAR3_WBONE_051615/TAEC/TAEC_ARMS/pa.fromHdl.tcl
+update_compile_order -fileset sim_1
+set_property drive 4 [get_ports [list I2C_SCL]]
+set_property drive 4 [get_ports [list I2C_SDA]]
+save_constraints

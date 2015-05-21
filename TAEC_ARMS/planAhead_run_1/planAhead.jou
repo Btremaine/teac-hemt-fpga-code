@@ -1,0 +1,26 @@
+#-----------------------------------------------------------
+# PlanAhead v14.7 (64-bit)
+# Build 321239 by xbuild on Fri Sep 27 19:29:51 MDT 2013
+# Start of session at: Sun May 17 12:56:34 2015
+# Process ID: 11972
+# Log file: C:/Users/btremaine/Dropbox/Engineering/FPGA_Design/Projects/TAEC_MAR3_WBONE_051615/TAEC/TAEC_ARMS/planAhead_run_1/planAhead.log
+# Journal file: C:/Users/btremaine/Dropbox/Engineering/FPGA_Design/Projects/TAEC_MAR3_WBONE_051615/TAEC/TAEC_ARMS/planAhead_run_1/planAhead.jou
+#-----------------------------------------------------------
+start_gui
+source C:/Users/btremaine/Dropbox/Engineering/FPGA_Design/Projects/TAEC_MAR3_WBONE_051615/TAEC/TAEC_ARMS/pa.fromHdl.tcl
+update_compile_order -fileset sim_1
+startgroup
+set_property package_pin P12 [get_ports I2C_SCL]
+endgroup
+startgroup
+set_property package_pin P78 [get_ports SWin]
+endgroup
+set_property package_pin "" [get_ports [list  I2C_SCL]]
+set_property package_pin "" [get_ports [list  I2C_SDA]]
+startgroup
+set_property package_pin P13 [get_ports I2C_SCL]
+endgroup
+startgroup
+set_property package_pin P12 [get_ports I2C_SDA]
+endgroup
+save_constraints
