@@ -12,7 +12,7 @@
 //     This module is the top level module for this project
 //     Revised 03/06/2015 added WISHBONE i2c_interface
 
-//     Revised 05/16/2015
+//     Revised 05/21/2015
 
 //  Parameters:
 //     None
@@ -104,6 +104,8 @@ wire set_pre_hi_w;
 wire set_ht1_w;
 wire set_ht2_w;
 wire set_ht3_w;
+wire rd_RXR_w;
+
 wire [7:0] stat_word_lsb ;
 wire [7:0] stat_word_msb ;
 
@@ -270,7 +272,8 @@ wire dcm_lock;
 	.set_HT2			(set_ht2_w),			// read ht[15:8]
 	.set_HT3			(set_ht3_w),			// read ht[19:16]
 	.set_pre_low	(set_pre_low_w),     // i2c lsb prescale counter
-	.set_pre_hi    (set_pre_hi_w)			// i2c msb prescale counter
+	.set_pre_hi    (set_pre_hi_w),	   // i2c msb prescale counter
+	.rd_RXR        (rd_RXR_w)           // read wb RX register
 	);
 	        		 
 
@@ -430,19 +433,16 @@ always @(negedge sp_clk) begin
 	  if(set_tx_w | !sync_rst_n) begin
 			wb_adr_i[2:0] <= TXR & {3{sync_rst_n}};
 			wb_dat_i[7:0] <= bdout[7:0] & {8{sync_rst_n}} ;
-	  
 	  end
 	  ///////////////////////////////////////////////////////// set CR
 	   if(set_cr_w | !sync_rst_n) begin
 			wb_adr_i[2:0] <= CR & {3{sync_rst_n}};
 			wb_dat_i[7:0] <= bdout[7:0] & {8{sync_rst_n}} ;
-	  
 	  end
 	  ///////////////////////////////////////////////////////// set CTL
 	   if(set_ctl_w | !sync_rst_n ) begin
 			wb_adr_i[2:0] <= CTL & {3{sync_rst_n}};
 			wb_dat_i[7:0] <= bdout[7:0] & {8{sync_rst_n}} ;
-	  
 	  end
 	  ///////////////////////////////////////////////////////// set SR
 	  if((set_sr_w & ale_sync) | !sync_rst_n) begin
@@ -451,21 +451,26 @@ always @(negedge sp_clk) begin
 	  if((set_sr_w & !ale_sync) | !sync_rst_n) begin
 	       sel_db <= 3'b100;
 	  end 
-	  
 	  ///////////////////////////////////////////////////////// set prescaler hi msb
 	  if(set_pre_hi_w | !sync_rst_n) begin
 			wb_adr_i[2:0] <= PRE_HI & {3{sync_rst_n}};
 			wb_dat_i[7:0] <= bdout[7:0] & {8{sync_rst_n}};  
-
 	  end
 	  ///////////////////////////////////////////////////////// set prescaler low msb
 	  if(set_pre_low_w | !sync_rst_n) begin
 			wb_adr_i[2:0] <= PRE_LO & {3{sync_rst_n}};
 			wb_dat_i[7:0] <= bdout[7:0] & {8{sync_rst_n}} ;
-	  
 	  end
+	  ///////////////////////////////////////////////////////// rd_RXR
+	  if((rd_RXR_w & ale_sync) | !sync_rst_n) begin
+	       wb_adr_i[2:0] <= RXR & {3{sync_rst_n}};
+	  end
+	  if((rd_RXR_w & !ale_sync) | !sync_rst_n) begin
+	       sel_db <= 3'b100;
+	  end 
+	  /////////////////////////////////////////////////////////
 	  
-	  wb_we_i <= (set_pre_low_w | set_pre_hi_w | set_ctl_w | set_cr_w | set_tx_w) & sync_rst_n & !set_sr_w ;
+	  wb_we_i <= (set_pre_low_w | set_pre_hi_w | set_ctl_w | set_cr_w | set_tx_w) & (sync_rst_n & !set_sr_w & !rd_RXR_w);
 	    
 end
 
@@ -536,7 +541,7 @@ assign db_out2 = (sel_db==3'b001)? {3'b010,stat_word[15:8]} : 12'b0;		// status 
 assign db_out3 = (sel_db==3'b011)? {3'b011,alarm_stat} : 12'b0;			// alarm data
 assign db_out4 = (sel_db==3'b100)? {3'b100,wb_dat_o} : 12'b0;			   // wb data
 
-assign db_out = db_out0 | db_out1 | db_out2 | db_out3 | db_out4 ;
+assign db_out = db_out0 | db_out1 | db_out2 | db_out3 | db_out4;
 assign DOUT =	( mod_sel ) ? db_out : 12'bz ;
 
   

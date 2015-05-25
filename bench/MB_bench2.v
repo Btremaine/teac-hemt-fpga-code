@@ -29,6 +29,8 @@ reg [19:0] ht;
 reg sw_in ;
 
 reg busy ;    // for test bench only
+reg ack ;      // for test bench only
+reg read;     // debug
 
 wire [19:0] hv_enable_n;         
 wire  dsync_n ;
@@ -78,9 +80,18 @@ taec_top taec_top1(
     .D3                                   (D3_1),
     .D4                                   (D4_1),
     .HI_GAIN_N                    (hi_gain_n),
-    .I2C_SCL                         (scl),
+    .I2C_SCL                       (scl),
     .I2C_SDA                         (sda)
      ) ;
+
+
+  i2c_slave_rx  i2c_slave_rx1 (
+     // inputs
+     .cs         (reset_n),
+    .sclk       (scl),
+     // outputs
+     .sda        (sda)
+    );
 
 // ---------------------------------------------------------------------------------
 
@@ -117,6 +128,8 @@ initial begin
        sw_in = 0;
 
       busy = 0;
+      ack = 1;
+      read = 0;
 
        #20 ht = 20'b00000000000000000000 ;
        #50 ht = 20'b00000000010000000000 ;
@@ -156,15 +169,19 @@ initial begin
  	#50  mod_sel_in = brd_id ;
       #100  addr[7:0] = 8'b0010_1000 ;   //   CTL reg
       #50    ale = 1'b1 ;                            //    assert ale
-      #50    cs = 1'b1 ;                             //    strobe address
-      #300  cs = 1'b0 ;
+      #50      cs = 1'b1 ;                           //    strobe address
+      #300    cs = 1'b0 ;
       #50    ale = 1'b0 ;                            //    de-assert ale
       #50    addr[7:0] = 8'h80 ;                 //    0x80
-      #50    cs = 1'b1 ;                             //    strobe data
-      #500  cs = 1'b0 ;
+      #50      cs = 1'b1 ;                           //    strobe data
+      #500    cs = 1'b0 ;
       #50  mod_sel_in = 2'b00 ;
 
- // send slave address
+ // ======================================================
+ // Write a byte of data to the I2C
+ // ======================================================
+
+      // Send the slave address with the LSB = 0
  	#50  mod_sel_in = brd_id ;
       #100  addr[7:0] = 8'b0010_0000 ;   //   TXR reg
       #50    ale = 1'b1 ;                            //    assert ale
@@ -176,54 +193,50 @@ initial begin
       #500  cs = 1'b0 ;
       #50  mod_sel_in = 2'b00 ;
 
- // send CR to 8'h90 to enable start & write
-
+     // send CR to 8'h90 to enable start & write
 	#50  mod_sel_in = brd_id ;
       #100  addr[7:0] = 8'b001001_00 ;   //   CR reg cmnd
       #50    ale = 1'b1 ;                            //    assert ale
-      #50    cs = 1'b1 ;                             //    strobe address
-      #500  cs = 1'b0 ;
-      #50    ale = 1'b0 ;                            //    de-assert ale
+      #50      cs = 1'b1 ;                           //    strobe address
+      #500    cs = 1'b0 ;
+      #50    ale = 1'b0 ;                           //    de-assert ale
       #50    addr[7:0] = 8'h90 ;                //    0x90
-      #50    cs = 1'b1 ;                             //    strobe data
-      #40000  cs = 1'b0 ;
+      #50      cs = 1'b1 ;                          //    strobe data
+      #200    cs = 1'b0 ;
       #50  mod_sel_in = 2'b00 ;
  #50000
 
-// check the TIP bit of the SR register for command done
-  #50  mod_sel_in = brd_id ;
-
+   // check the TIP bit of the SR register for command done
+   #50  mod_sel_in = brd_id ;
    busy = 1'b1 ;
    while (busy==1) begin
      #100  addr[7:0] = 8'b001011_00 ;   //   rd SR reg cmnd
        #50    ale = 1'b1 ;                          //    assert ale
-       #50    cs = 1'b1 ;                           //    strobe address
-     #500    cs = 1'b0 ;
+       #50       cs = 1'b1 ;                         //    strobe address
+     #500       cs = 1'b0 ;
        #50    ale = 1'b0 ;                          //    de-assert ale
        #50    cs = 1'b1 ;                           //    strobe data
-       #200        busy = dout[1] ;                   // TIP bit
-     #500  cs = 1'b0 ;
+       #200        busy = dout[1] ;             // TIP bit
+     #500   cs = 1'b0 ;
      $display(" check busy");
     end
 
   #50  mod_sel_in = 2'b00 ;
 
- // send byte of data to the selected slave
- // set TXR with a slave memory address for the data to be written to [ 1st BYTE ]
-   #20000
-
+   // set up the internal reg # to send to 
+   #25000
  	#50  mod_sel_in = brd_id ;
       #100  addr[7:0] = 8'b0010_0000 ;   //   TXR reg
       #50    ale = 1'b1 ;                            //    assert ale
       #50    cs = 1'b1 ;                             //    strobe address
       #500  cs = 1'b0 ;
       #50    ale = 1'b0 ;                            //    de-assert ale
-      #50    addr[7:0] = 8'hc0 ;                 //   0xc0
+      #50    addr[7:0] = 8'hc3 ;                 //   0xc3
       #50    cs = 1'b1 ;                             //    strobe data
       #500  cs = 1'b0 ;
       #50  mod_sel_in = 2'b00 ;
-   // 
-   //  set CR with 8'h10 to enable a write to send the slave memory address
+
+    //  set CR with 8'h10 to enable a write to send the slave memory address
 	#50   mod_sel_in = brd_id ;
       #100  addr[7:0] = 8'b001001_00 ;   //   CR reg cmnd
       #50    ale = 1'b1 ;                            //    assert ale
@@ -235,8 +248,12 @@ initial begin
       #500  cs = 1'b0 ;
       #50   mod_sel_in = 2'b00 ;
 
+
+
+#20000
+
    //  check the TIP bit of the SR register for command done
-  #50   mod_sel_in = brd_id ;
+   #50   mod_sel_in = brd_id ;
    busy = 1'b1 ;
    while (busy==1) begin
      #100  addr[7:0] = 8'b001011_00 ;   //   rd SR reg cmnd
@@ -251,7 +268,213 @@ initial begin
     end
      #50    mod_sel_in = 2'b00 ;
 
+    // send the data to the register
+	#50  mod_sel_in = brd_id ;
+      #100  addr[7:0] = 8'b0010_0000 ;   //   TXR reg
+      #50    ale = 1'b1 ;                            //    assert ale
+      #50    cs = 1'b1 ;                             //    strobe address
+      #500  cs = 1'b0 ;
+      #50    ale = 1'b0 ;                            //    de-assert ale
+      #50    addr[7:0] = 8'h55 ;                 //   0x55 (data to be sent)
+      #50    cs = 1'b1 ;                             //    strobe data
+      #500  cs = 1'b0 ;
+      #50  mod_sel_in = 2'b00 ;
 
+      //  set CR with 8'h10 to enable a write to send the slave memory address
+	#50   mod_sel_in = brd_id ;
+      #100  addr[7:0] = 8'b001001_00 ;   //   CR reg cmnd
+      #50    ale = 1'b1 ;                            //    assert ale
+      #50    cs = 1'b1 ;                             //    strobe address
+      #500  cs = 1'b0 ;
+      #50    ale = 1'b0 ;                            //    de-assert ale
+      #50    addr[7:0] = 8'h50 ;                //    0x50 
+      #50    cs = 1'b1 ;                             //    strobe data
+      #500  cs = 1'b0 ;
+      #50   mod_sel_in = 2'b00 ;
+
+  #10000
+ //  check the TIP bit of the SR register for command done
+   #50   mod_sel_in = brd_id ;
+   busy = 1'b1 ;
+   while (busy==1) begin
+     #100  addr[7:0] = 8'b001011_00 ;   //   rd SR reg cmnd
+       #50    ale = 1'b1 ;                          //    assert ale
+       #50    cs = 1'b1 ;                           //    strobe address
+     #500    cs = 1'b0 ;
+       #50    ale = 1'b0 ;                          //    de-assert ale
+       #50    cs = 1'b1 ;                           //    strobe data
+       #200        busy = dout[1] ;                   // TIP bit
+     #500  cs = 1'b0 ;
+     $display(" check busy");
+    end
+     #50    mod_sel_in = 2'b00 ;
+ // =================================================
+ // =================================================
+
+       read= 0;
+#50 read= 1;
+#50 read = 0;
+
+
+#60000
+      read = 1;
+// =================================================
+// read I2C slave data register 
+//==================================================
+      // (1) Set the slave address with the LSB = 0
+ 	#50  mod_sel_in = brd_id ;
+      #100  addr[7:0] = 8'b0010_0000 ;   //   TXR reg
+      #50    ale = 1'b1 ;                            //    assert ale
+      #50    cs = 1'b1 ;                             //    strobe address
+      #500  cs = 1'b0 ;
+      #50    ale = 1'b0 ;                            //    de-assert ale
+      #50    addr[7:0] = 8'haa ;                 //   0xaa (LSB 0, write)
+      #50    cs = 1'b1 ;                             //    strobe data
+      #500  cs = 1'b0 ;
+      #50  mod_sel_in = 2'b00 ;
+
+     // (2) Send CR to 8'h90 to enable start & write
+	#50  mod_sel_in = brd_id ;
+      #100  addr[7:0] = 8'b001001_00 ;   //   CR reg cmnd
+      #50    ale = 1'b1 ;                            //    assert ale
+      #50      cs = 1'b1 ;                           //    strobe address
+      #500    cs = 1'b0 ;
+      #50    ale = 1'b0 ;                           //    de-assert ale
+      #50    addr[7:0] = 8'h90 ;                //    0x90
+      #50      cs = 1'b1 ;                          //    strobe data
+      #200    cs = 1'b0 ;
+      #50  mod_sel_in = 2'b00 ;
+ #50000
+
+   // (3) check the TIP bit of the SR register for command done
+   #50  mod_sel_in = brd_id ;
+   busy = 1'b1 ;
+   while (busy==1) begin
+     #100  addr[7:0] = 8'b001011_00 ;   //   rd SR reg cmnd
+       #50    ale = 1'b1 ;                          //    assert ale
+       #50       cs = 1'b1 ;                         //    strobe address
+     #500       cs = 1'b0 ;
+       #50    ale = 1'b0 ;                          //    de-assert ale
+       #50    cs = 1'b1 ;                           //    strobe data
+       #200        busy = dout[1] ;             // TIP bit
+     #500   cs = 1'b0 ;
+     $display(" check busy");
+    end
+
+  #50  mod_sel_in = 2'b00 ;
+
+   // (4) Set up the internal reg # from which to read 
+   #20000
+ 	#50  mod_sel_in = brd_id ;
+      #100  addr[7:0] = 8'b0010_0000 ;   //   TXR reg
+      #50    ale = 1'b1 ;                            //    assert ale
+      #50    cs = 1'b1 ;                             //    strobe address
+      #500  cs = 1'b0 ;
+      #50    ale = 1'b0 ;                            //    de-assert ale
+      #50    addr[7:0] = 8'hd0 ;                 //   0xd0  internal reg #
+      #50    cs = 1'b1 ;                             //    strobe data
+      #500  cs = 1'b0 ;
+      #50  mod_sel_in = 2'b00 ;
+
+    // (5)  set CR with 8'h10 to enable a write to send the register #
+	#50   mod_sel_in = brd_id ;
+      #100  addr[7:0] = 8'b001001_00 ;   //   CR reg cmnd
+      #50    ale = 1'b1 ;                            //    assert ale
+      #50    cs = 1'b1 ;                             //    strobe address
+      #500  cs = 1'b0 ;
+      #50    ale = 1'b0 ;                            //    de-assert ale
+      #50    addr[7:0] = 8'h10 ;                //    0x10
+      #50    cs = 1'b1 ;                             //    strobe data
+      #500  cs = 1'b0 ;
+      #50   mod_sel_in = 2'b00 ;
+
+   //  (6) check the TIP bit of the SR register for command done
+   #50   mod_sel_in = brd_id ;
+   busy = 1'b1 ;
+   while (busy==1) begin
+     #100  addr[7:0] = 8'b001011_00 ;   //   rd SR reg cmnd
+       #50    ale = 1'b1 ;                          //    assert ale
+       #50    cs = 1'b1 ;                           //    strobe address
+     #500    cs = 1'b0 ;
+       #50    ale = 1'b0 ;                          //    de-assert ale
+       #50    cs = 1'b1 ;                           //    strobe data
+       #200        busy = dout[1] ;                   // TIP bit
+     #500  cs = 1'b0 ;
+     $display(" check busy");
+    end
+     #50    mod_sel_in = 2'b00 ;
+
+    // (7) Set the slave address from which to read with LSB==1
+	#50  mod_sel_in = brd_id ;
+      #100  addr[7:0] = 8'b0010_0000 ;   //   TXR reg
+      #50    ale = 1'b1 ;                            //    assert ale
+      #50    cs = 1'b1 ;                             //    strobe address
+      #500  cs = 1'b0 ;
+      #50    ale = 1'b0 ;                            //    de-assert ale
+      #50    addr[7:0] = 8'hab ;                 //   0xab  (slave + lsb=1, read)
+      #50    cs = 1'b1 ;                             //    strobe data
+      #500  cs = 1'b0 ;
+      #50  mod_sel_in = 2'b00 ;
+
+     //  (8) set CR with 8'h90 to enable a write to send the slave memory address
+	#50   mod_sel_in = brd_id ;
+      #100  addr[7:0] = 8'b001001_00 ;   //   CR reg cmnd
+      #50    ale = 1'b1 ;                            //    assert ale
+      #50    cs = 1'b1 ;                             //    strobe address
+      #500  cs = 1'b0 ;
+      #50    ale = 1'b0 ;                            //    de-assert ale
+      #50    addr[7:0] = 8'h90 ;                //    0x90 
+      #50    cs = 1'b1 ;                             //    strobe data
+      #500  cs = 1'b0 ;
+      #50   mod_sel_in = 2'b00 ;
+
+  //  (9) check the TIP bit of the SR register for command done
+   #50   mod_sel_in = brd_id ;
+   busy = 1'b1 ;
+   while (busy==1) begin
+     #100  addr[7:0] = 8'b001011_00 ;   //   rd SR reg cmnd
+       #50    ale = 1'b1 ;                          //    assert ale
+       #50    cs = 1'b1 ;                           //    strobe address
+     #500    cs = 1'b0 ;
+       #50    ale = 1'b0 ;                          //    de-assert ale
+       #50    cs = 1'b1 ;                           //    strobe data
+       #200        busy = dout[1] ;                   // TIP bit
+     #500  cs = 1'b0 ;
+     $display(" check busy");
+    end
+     #50    mod_sel_in = 2'b00 ;
+
+#25000
+
+ // (10) set CR with 8'h28 to enable a read
+	#50   mod_sel_in = brd_id ;
+      #100  addr[7:0] = 8'b001001_00 ;   //   CR reg cmnd
+      #50    ale = 1'b1 ;                            //    assert ale
+      #50    cs = 1'b1 ;                             //    strobe address
+      #500  cs = 1'b0 ;
+      #50    ale = 1'b0 ;                            //    de-assert ale
+      #50    addr[7:0] = 8'h28 ;                //    0x20 wass 0x28
+      #50    cs = 1'b1 ;                             //    strobe data
+      #500  cs = 1'b0 ;
+      #50   mod_sel_in = 2'b00 ;
+
+ //  (11) check the TIP bit of the SR register for command done
+   #50   mod_sel_in = brd_id ;
+   busy = 1'b1 ;
+   while (busy==1) begin
+     #100  addr[7:0] = 8'b001011_00 ;   //   rd SR reg cmnd
+       #50    ale = 1'b1 ;                          //    assert ale
+       #50    cs = 1'b1 ;                           //    strobe address
+     #500    cs = 1'b0 ;
+       #50    ale = 1'b0 ;                          //    de-assert ale
+       #50    cs = 1'b1 ;                           //    strobe data
+       #200        busy = dout[1] ;                   // TIP bit
+     #500  cs = 1'b0 ;
+     $display(" check busy");
+    end
+     #50    mod_sel_in = 2'b00 ;
+// ==================================================
+// ==================================================
 
  // -------------------------------------------------------------------------------------------
  #50000
@@ -442,7 +665,7 @@ initial begin
 
 
 
-    #5000 $finish ;
+    #20000 $finish ;
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////

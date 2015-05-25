@@ -36,6 +36,8 @@
 // 15 read HT[19:16]			1				{0,0,0,SWin, d[3:0]}
 // 16 prescaler low			1
 // 17 prescaleer high		1
+// 18 get I2Chigh	MSB	   1
+// 19 get I2Chigh	LSB		1
 
 `include "..\include\timescale.v"
 `include "..\include\defines.v"
@@ -70,8 +72,10 @@ module ni_intf(
 		output set_HT2,
 		output set_HT3,
 		output set_pre_low,
-		output set_pre_hi
+		output set_pre_hi,
+		output rd_RXR
 ) ;
+
 // command parameters
 parameter 	cmd0 = 6'b000000;
 parameter 	cmd1 = 6'b000001;
@@ -91,6 +95,7 @@ parameter	cmd14 = 6'b001110;
 parameter	cmd15 = 6'b001111;
 parameter 	cmd16 = 6'b010000;
 parameter 	cmd17 = 6'b010001;
+parameter 	cmd18 = 6'b010010;
 
 
 reg mod_sel_dly1 ;
@@ -133,14 +138,16 @@ wire decode_w;
 			assign set_TXR =   		(cmd8==sel_addr[5:0]) & select_w & ~ale; 
          assign set_CR =  			(cmd9==sel_addr[5:0]) & select_w & ~ale;
 			assign set_CTL =  		(cmd10==sel_addr[5:0]) & select_w & ~ale;
-			assign set_SR =  			(cmd11==sel_addr[5:0]) & select_w ; //&  ale;
+			assign set_SR =  			(cmd11==sel_addr[5:0]) & select_w & ~ale; // read only
 			assign set_stat =  		(cmd12==sel_addr[5:0]) & select_w & ~ale;
 			
 			assign set_HT1 =  		(cmd13==sel_addr[5:0]) & select_w & ~ale;
 			assign set_HT2 =  		(cmd14==sel_addr[5:0]) & select_w & ~ale;
 			assign set_HT3 =  		(cmd15==sel_addr[5:0]) & select_w & ~ale;
 			assign set_pre_low =  	(cmd16==sel_addr[5:0]) & select_w & ~ale;
-			assign set_pre_hi =  	(cmd17==sel_addr[5:0]) & select_w & ~ale;
+			assign set_pre_hi  =  	(cmd17==sel_addr[5:0]) & select_w & ~ale;
+
+         assign rd_RXR =   		(cmd18==sel_addr[5:0]) & select_w & ~ale; 			
 					
                                 
 endmodule
