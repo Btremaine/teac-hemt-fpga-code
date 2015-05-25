@@ -13,7 +13,7 @@
 
 //  None
 
-//  Notes    :  Modified  3/10/2015 btremaine
+//  Notes    :  Modified 5/24/15 to work in read mode, bpt.
 
 // =================================================================================
 //	ADDR[7:2]	ADDR[1:0]					ADDR[7:0]	ADDR[7:0]	ADDR[7:0]		

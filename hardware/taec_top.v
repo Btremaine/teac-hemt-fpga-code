@@ -12,7 +12,7 @@
 //     This module is the top level module for this project
 //     Revised 03/06/2015 added WISHBONE i2c_interface
 
-//     Revised 05/21/2015
+//     Revised 5/24/15 to work in read mode, bpt.
 
 //  Parameters:
 //     None

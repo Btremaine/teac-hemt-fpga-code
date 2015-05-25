@@ -6,6 +6,8 @@
 * to the National thru I2C
  */
 
+// updated 5/24/15 to work in read mode, bpt.
+
 module i2c_slave_rx (
     input   cs, sclk,
     inout   sda
