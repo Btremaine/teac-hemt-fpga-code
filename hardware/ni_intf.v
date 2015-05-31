@@ -36,8 +36,8 @@
 // 15 read HT[19:16]			1				{0,0,0,SWin, d[3:0]}
 // 16 prescaler low			1
 // 17 prescaleer high		1
-// 18 get I2Chigh	MSB	   1
-// 19 get I2Chigh	LSB		1
+// 18 read RXR reg   	   1
+
 
 `include "..\include\timescale.v"
 `include "..\include\defines.v"

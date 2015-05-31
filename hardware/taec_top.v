@@ -467,6 +467,7 @@ always @(negedge sp_clk) begin
 	  end
 	  if((rd_RXR_w & !ale_sync) | !sync_rst_n) begin
 	       sel_db <= 3'b100;
+             wb_adr_i[2:0] <= RXR & {3{sync_rst_n}};
 	  end 
 	  /////////////////////////////////////////////////////////
 	  
@@ -531,7 +532,7 @@ always @(negedge sp_clk) begin
     endcase
  end
  
-assign start_xfer = (set_pre_low_w | set_pre_hi_w | (set_sr_w & ale_sync) | set_ctl_w | set_cr_w | set_tx_w) ; // & !wb_ack_o ;
+assign start_xfer = (set_pre_low_w | set_pre_hi_w | (set_sr_w & ale_sync) | set_ctl_w | set_cr_w | set_tx_w | rd_RXR_w) ; // & !wb_ack_o ;
  
  
  // data output bus

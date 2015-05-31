@@ -20,7 +20,11 @@ integer     sl_addr_cnt,sl_reg_cnt,tx_bit_cnt;
 reg [7:0]   sl_addr;    //7bit MSB-slave addr; LSB bit - wr/rd
 reg [7:0]   reg_addr; //slave reg address
 reg [7:0]   rx_data;   //slave reg data received
-reg [7:0]   tx_data;   //slave reg data to be sent
+reg [7:0]   tx_data1;   //slave reg data1 to be sent
+reg [7:0]   tx_data2;   //slave reg data2 to be sent
+wire [7:0]  tx_data;
+
+reg byte;
 
 assign sda = sda_o;
 
@@ -35,9 +39,13 @@ begin
     send_reg_data   = 1'b0;
     stop_val        = 1'b0;
     rx_data         = 8'b0;
-    tx_data         = 8'hc3;
+    tx_data1         = 8'h51;
+    tx_data2         = 8'h52;
+    byte = 0;
 end
 
+
+assign tx_data =  (byte)? tx_data1: tx_data2;
 
 always @ (negedge sda)
 begin
@@ -144,7 +152,7 @@ begin
             @ (negedge sclk) ;
             #3_000 sda_o    = 1'bz;
             @ (posedge sclk);
-            # 3_000; //wait till sclk=high level
+            # 4_000; //wait till sclk=high level
            // $display("\nAt time %t, SCL is high now !", $time);
             if (~stop_val)
             begin
@@ -159,13 +167,14 @@ always @ (negedge sclk)
 begin
     if (send_reg_data)
     begin
-        // tx_data = $random; //Modified to send the data which is been received.
+        // tx_data = $random; //Modified to send the data which is been received.    
         for (tx_bit_cnt=7;tx_bit_cnt>=0;tx_bit_cnt=tx_bit_cnt-1)
         begin
             #3_000 sda_o = tx_data[tx_bit_cnt];
             @ (negedge sclk);
         end
         #3_000 sda_o = 1'bz;
+        byte = 1;
         @ (posedge sclk);
         if (sda)
         begin
@@ -185,8 +194,9 @@ begin
         end
         else
         begin
-            $display ("%t i2c_slave_rx: Invalid NACK bit rxd",$time);
-            send_reg_data = 1'b0;
+            // modified to allow repeated read
+            $display ("%t i2c_slave_rx: Invalid NACK bit rxd or repeated read",$time);
+            send_reg_data = 1'b1;
         end
     end
 end

@@ -1,7 +1,3 @@
-
-
-
-
 // Module     : mb_bench2                                                                                    //
 // Description: This is the top level stimulus module of the TAEC FPGA. 
 //                      It  instatiates dac_board                                                             //
@@ -31,6 +27,9 @@ reg sw_in ;
 reg busy ;    // for test bench only
 reg ack ;      // for test bench only
 reg read;     // debug
+reg [7:0] byte1;
+reg [7:0] byte2;
+reg cr20;
 
 wire [19:0] hv_enable_n;         
 wire  dsync_n ;
@@ -127,9 +126,12 @@ initial begin
        reset_n = 0;
        sw_in = 0;
 
+      byte1 = 0;
+      byte2 = 0;
       busy = 0;
       ack = 1;
       read = 0;
+      cr20 = 0;
 
        #20 ht = 20'b00000000000000000000 ;
        #50 ht = 20'b00000000010000000000 ;
@@ -220,8 +222,7 @@ initial begin
      #500   cs = 1'b0 ;
      $display(" check busy");
     end
-
-  #50  mod_sel_in = 2'b00 ;
+   #50  mod_sel_in = 2'b00 ;
 
    // set up the internal reg # to send to 
    #25000
@@ -247,8 +248,6 @@ initial begin
       #50    cs = 1'b1 ;                             //    strobe data
       #500  cs = 1'b0 ;
       #50   mod_sel_in = 2'b00 ;
-
-
 
 #20000
 
@@ -287,7 +286,7 @@ initial begin
       #50    cs = 1'b1 ;                             //    strobe address
       #500  cs = 1'b0 ;
       #50    ale = 1'b0 ;                            //    de-assert ale
-      #50    addr[7:0] = 8'h50 ;                //    0x50 
+      #50    addr[7:0] = 8'h50 ;                //    0x50                     includes stop
       #50    cs = 1'b1 ;                             //    strobe data
       #500  cs = 1'b0 ;
       #50   mod_sel_in = 2'b00 ;
@@ -308,12 +307,12 @@ initial begin
      $display(" check busy");
     end
      #50    mod_sel_in = 2'b00 ;
- // =================================================
- // =================================================
 
-       read= 0;
-#50 read= 1;
-#50 read = 0;
+     #50 read = 0;
+     #50 read = 1;
+     #500 read =0;
+ // =================================================
+ // =================================================
 
 
 #60000
@@ -446,14 +445,19 @@ initial begin
 
 #25000
 
- // (10) set CR with 8'h28 to enable a read
+ // (10) set CR with 8'h20 to enable a read
+     cr20 = 0;
+     #50 cr20=1;
+     #50 cr20=0;
+
+
 	#50   mod_sel_in = brd_id ;
       #100  addr[7:0] = 8'b001001_00 ;   //   CR reg cmnd
       #50    ale = 1'b1 ;                            //    assert ale
       #50    cs = 1'b1 ;                             //    strobe address
       #500  cs = 1'b0 ;
       #50    ale = 1'b0 ;                            //    de-assert ale
-      #50    addr[7:0] = 8'h28 ;                //    0x20 wass 0x28
+      #50    addr[7:0] = 8'h20 ;                //    0x20
       #50    cs = 1'b1 ;                             //    strobe data
       #500  cs = 1'b0 ;
       #50   mod_sel_in = 2'b00 ;
@@ -473,6 +477,77 @@ initial begin
      $display(" check busy");
     end
      #50    mod_sel_in = 2'b00 ;
+
+ //  (12) get 1st data byte
+       #50   mod_sel_in = brd_id ;
+     #100  addr[7:0] = 8'b010010_00;   //   rd TXR reg cmnd
+       #50    ale = 1'b1 ;                          //    assert ale
+       #50       cs = 1'b1 ;                        //    strobe address
+     #500       cs = 1'b0 ;
+       #50    ale = 1'b0 ;                          //    de-assert ale
+       #50       cs = 1'b1 ;                        //    strobe data
+       #200       byte1 = dout ;                 // data byte
+     #500      cs = 1'b0 ;
+     #50    mod_sel_in = 2'b00 ;
+
+ // (13) set CR with 8'h28 to enable a final read
+     #10000
+
+	#50   mod_sel_in = brd_id ;
+      #100  addr[7:0] = 8'b001001_00 ;   //   CR reg cmnd
+      #50    ale = 1'b1 ;                            //    assert ale
+      #50    cs = 1'b1 ;                             //    strobe address
+      #500  cs = 1'b0 ;
+      #50    ale = 1'b0 ;                            //    de-assert ale
+      #50    addr[7:0] = 8'h28 ;                //    0x28
+      #50    cs = 1'b1 ;                             //    strobe data
+      #500  cs = 1'b0 ;
+      #50   mod_sel_in = 2'b00 ;
+
+ //  (14) check the TIP bit of the SR register for command done
+   #50   mod_sel_in = brd_id ;
+   busy = 1'b1 ;
+   while (busy==1) begin
+     #100  addr[7:0] = 8'b001011_00 ;   //   rd SR reg cmnd
+       #50    ale = 1'b1 ;                          //    assert ale
+       #50    cs = 1'b1 ;                           //    strobe address
+     #500    cs = 1'b0 ;
+       #50    ale = 1'b0 ;                          //    de-assert ale
+       #50    cs = 1'b1 ;                           //    strobe data
+       #200        busy = dout[1] ;                   // TIP bit
+     #500  cs = 1'b0 ;
+     $display(" check busy");
+    end
+     #50    mod_sel_in = 2'b00 ; 
+
+ //  (11) get 2nd data byte
+       #50   mod_sel_in = brd_id ;
+     #100  addr[7:0] = 8'b010010_00;    //   rd TXR reg cmnd
+       #50    ale = 1'b1 ;                          //    assert ale
+       #50       cs = 1'b1 ;                        //    strobe address
+     #500       cs = 1'b0 ;
+       #50    ale = 1'b0 ;                          //    de-assert ale
+       #50       cs = 1'b1 ;                        //    strobe data
+       #200       byte2 = dout ;                 // data byte
+     #500      cs = 1'b0 ;
+     #50    mod_sel_in = 2'b00 ;
+
+     // set CR to 8'h40 to send STOP
+	#50  mod_sel_in = brd_id ;
+      #100  addr[7:0] = 8'b001001_00 ;   //   CR reg cmnd
+      #50    ale = 1'b1 ;                            //    assert ale
+      #50      cs = 1'b1 ;                           //    strobe address
+      #500    cs = 1'b0 ;
+      #50    ale = 1'b0 ;                           //    de-assert ale
+      #50    addr[7:0] = 8'h40 ;                //    0x40
+      #50      cs = 1'b1 ;                          //    strobe data
+      #200    cs = 1'b0 ;
+      #50  mod_sel_in = 2'b00 ;
+
+     #50 read = 0;
+     #50 read = 1;
+     #500 read =0;
+
 // ==================================================
 // ==================================================
 
